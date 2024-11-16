@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>KOLAgent Logs</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1a1a1a;
+            color: #d4d4d4;
+            margin: 20px;
+            padding: 0 20px;
+        }
+        
+        h1 {
+            color: #fff;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        #logs {
+            padding: 20px;
+            border-radius: 8px;
+            height: 80vh;
+            overflow-y: auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px;
+            align-items: start;
+        }
+
+        .log-entry {
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .log-entry:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .timestamp {
+            color: #569cd6;
+            font-size: 0.85em;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .message {
+            line-height: 1.4;
+            word-break: break-word;
+        }
+
+        /* Log type specific styles */
+        .error { 
+            background: linear-gradient(145deg, #2a1c1c, #331f1f);
+            border: 1px solid #ff000033;
+        }
+        .token_transfer { 
+            background: linear-gradient(145deg, #1c1f2a, #1f232f);
+            border: 1px solid #569cd633;
+        }
+        .ticker_search { 
+            background: linear-gradient(145deg, #1c2a1c, #1f2f1f);
+            border: 1px solid #4caf5033;
+        }
+        .ticker_found { 
+            background: linear-gradient(145deg, #1c2a2a, #1f2f2f);
+            border: 1px solid #00bcd433;
+        }
+        .shill_message { 
+            background: linear-gradient(145deg, #2a1c2a, #2f1f2f);
+            border: 1px solid #9c27b033;
+        }
+        .tweet_post { 
+            background: linear-gradient(145deg, #1c2a2a, #1f2f2f);
+            border: 1px solid #00bcd433;
+        }
+
+        #filters {
+            margin-bottom: 20px;
+            text-align: center;
+            padding: 15px;
+            background: #252525;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .filter-btn {
+            background: #333;
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            margin: 4px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9em;
+        }
+
+        .filter-btn:hover {
+            background: #444;
+        }
+
+        .filter-btn.active {
+            background: #569cd6;
+            box-shadow: 0 0 10px rgba(86, 156, 214, 0.3);
+        }
+
+        /* Scrollbar styling */
+        #logs::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        #logs::-webkit-scrollbar-track {
+            background: #1a1a1a;
+            border-radius: 5px;
+        }
+
+        #logs::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 5px;
+        }
+
+        #logs::-webkit-scrollbar-thumb:hover {
+            background: #444;
+        }
+
+        /* Animation for new entries */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .log-entry {
+            animation: fadeIn 0.3s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <h1>KOLAgent Logs</h1>
+    <div id="filters">
+        <button class="filter-btn active" data-type="all">All</button>
+        <button class="filter-btn" data-type="token_transfer">🔄 Transfers</button>
+        <button class="filter-btn" data-type="ticker_search">🔍 Ticker Search</button>
+        <button class="filter-btn" data-type="ticker_found">✅ Tickers Found</button>
+        <button class="filter-btn" data-type="shill_message">💭 Shill Messages</button>
+        <button class="filter-btn" data-type="tweet_post">🐦 Tweets</button>
+        <button class="filter-btn" data-type="error">❌ Errors</button>
+    </div>
+    <div id="logs"></div>
+
+    <script>
+        const logsDiv = document.getElementById('logs');
+        let activeFilter = 'all';
+        let allLogs = [];
+
+        document.getElementById('filters').addEventListener('click', (e) => {
+            if (e.target.classList.contains('filter-btn')) {
+                document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+                activeFilter = e.target.dataset.type;
+                renderLogs();
+            }
+        });
+
+        function renderLogs() {
+            logsDiv.innerHTML = '';
+            const filteredLogs = activeFilter === 'all' 
+                ? allLogs 
+                : allLogs.filter(log => log.type === activeFilter);
+            
+            filteredLogs.forEach(addLogEntry);
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        }
+
+        function addLogEntry(log) {
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${log.type}`;
+            entry.innerHTML = `
+                <span class="timestamp">${new Date(log.timestamp).toLocaleTimeString()}</span>
+                <span class="message">${log.message}</span>
+            `;
+            logsDiv.appendChild(entry);
+        }
+
+        fetch('/logs')
+            .then(response => response.json())
+            .then(logs => {
+                allLogs = logs;
+                renderLogs();
+            });
+
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const ws = new WebSocket(`${protocol}//${window.location.host}`);
+        ws.onmessage = (event) => {
+            const log = JSON.parse(event.data);
+            allLogs.push(log);
+            if (activeFilter === 'all' || activeFilter === log.type) {
+                addLogEntry(log);
+                logsDiv.scrollTop = logsDiv.scrollHeight;
+            }
+        };
+    </script>
+</body>
+</html>
